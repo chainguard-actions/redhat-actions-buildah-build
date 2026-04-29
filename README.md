@@ -1,6 +1,12 @@
 # redhat-actions/buildah-build
 
-Hardened GitHub Action by [Chainguard](https://www.chainguard.dev).
+Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/redhat-actions/buildah-build](https://github.com/redhat-actions/buildah-build).
+
+## Versions
+
+| Version | Tag | Upstream commit |
+|---------|-----|-----------------|
+| v2.13 | [`v2.13`](https://github.com/chainguard-actions/buildah-build/tree/v2.13) | — |
 
 ## Privacy
 
