@@ -1,5 +1,7 @@
 # redhat-actions/buildah-build
 
+GitHub Action to use 'buildah' to build a container image.
+
 Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/redhat-actions/buildah-build](https://github.com/redhat-actions/buildah-build).
 
 ## Versions
