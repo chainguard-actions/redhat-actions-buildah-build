@@ -2,5 +2,6 @@
   "owner": "redhat-actions",
   "name": "buildah-build",
   "visibility": "internal",
-  "description": "GitHub Action to use 'buildah' to build a container image."
+  "description": "GitHub Action to use 'buildah' to build a container image.",
+  "block_publish": false
 }
