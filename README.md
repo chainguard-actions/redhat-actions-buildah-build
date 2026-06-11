@@ -1,6 +1,6 @@
 # redhat-actions/buildah-build
 
-GitHub Action to use 'buildah' to build a container image.
+Build a container image, with or without a Containerfile
 
 Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/redhat-actions/buildah-build](https://github.com/redhat-actions/buildah-build).
 
