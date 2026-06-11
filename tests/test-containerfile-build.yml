@@ -1,0 +1,56 @@
+name: Test containerfile build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: build
+        uses: .
+        with:
+          image: test-image
+          tags: latest v1
+          containerfiles: |
+            actions/hardened/redhat-actions--buildah-build/v2.13/tests/fixtures/Containerfile
+          labels: |
+            org.opencontainers.image.description=Test image
+          build-args: |
+            MY_ARG=hello
+          layers: true
+          extra-args: |
+            --no-cache
+
+      - name: Assert image output
+        env:
+          ACTUAL: ${{ steps.build.outputs.image }}
+        run: |
+          echo "actual image: $ACTUAL"
+          if [ "$ACTUAL" != "test-image" ]; then
+            echo "FAIL: expected image output to be 'test-image', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert tags output
+        env:
+          ACTUAL: ${{ steps.build.outputs.tags }}
+        run: |
+          echo "actual tags: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected tags output to be non-empty"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert image-with-tag output
+        env:
+          ACTUAL: ${{ steps.build.outputs.image-with-tag }}
+        run: |
+          echo "actual image-with-tag: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected image-with-tag output to be non-empty"
+            exit 1
+          fi
+          echo "PASS"

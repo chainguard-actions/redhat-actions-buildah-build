@@ -1,0 +1,3 @@
+FROM busybox:latest
+LABEL test=true
+RUN echo "hello from test build"

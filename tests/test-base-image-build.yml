@@ -1,0 +1,48 @@
+name: Test base-image build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: build
+        uses: .
+        with:
+          image: test-base-image
+          tags: latest
+          base-image: busybox:latest
+          content: |
+            actions/hardened/redhat-actions--buildah-build/v2.13/tests/fixtures/Containerfile
+          entrypoint: |
+            /bin/sh
+            -c
+            echo hello
+          port: "8080"
+          workdir: /app
+          envs: |
+            MY_ENV=hello
+            ANOTHER_ENV=world
+
+      - name: Assert image output
+        env:
+          ACTUAL: ${{ steps.build.outputs.image }}
+        run: |
+          echo "actual image: $ACTUAL"
+          if [ "$ACTUAL" != "test-base-image" ]; then
+            echo "FAIL: expected image output to be 'test-base-image', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert tags output
+        env:
+          ACTUAL: ${{ steps.build.outputs.tags }}
+        run: |
+          echo "actual tags: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected tags output to be non-empty"
+            exit 1
+          fi
+          echo "PASS"

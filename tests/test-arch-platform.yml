@@ -1,0 +1,103 @@
+name: Test arch and platform inputs
+on:
+  workflow_dispatch:
+jobs:
+  test-arch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: build-arch
+        uses: .
+        with:
+          image: test-arch-image
+          tags: latest
+          containerfiles: |
+            actions/hardened/redhat-actions--buildah-build/v2.13/tests/fixtures/Containerfile
+          arch: amd64
+
+      - name: Assert image output
+        env:
+          ACTUAL: ${{ steps.build-arch.outputs.image }}
+        run: |
+          echo "actual image: $ACTUAL"
+          if [ "$ACTUAL" != "test-arch-image" ]; then
+            echo "FAIL: expected image output to be 'test-arch-image', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+  test-archs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: build-archs
+        uses: .
+        with:
+          image: test-archs-image
+          tags: latest
+          containerfiles: |
+            actions/hardened/redhat-actions--buildah-build/v2.13/tests/fixtures/Containerfile
+          archs: amd64,arm64
+
+      - name: Assert image output
+        env:
+          ACTUAL: ${{ steps.build-archs.outputs.image }}
+        run: |
+          echo "actual image: $ACTUAL"
+          if [ "$ACTUAL" != "test-archs-image" ]; then
+            echo "FAIL: expected image output to be 'test-archs-image', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+  test-platform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: build-platform
+        uses: .
+        with:
+          image: test-platform-image
+          tags: latest
+          containerfiles: |
+            actions/hardened/redhat-actions--buildah-build/v2.13/tests/fixtures/Containerfile
+          platform: linux/amd64
+
+      - name: Assert image output
+        env:
+          ACTUAL: ${{ steps.build-platform.outputs.image }}
+        run: |
+          echo "actual image: $ACTUAL"
+          if [ "$ACTUAL" != "test-platform-image" ]; then
+            echo "FAIL: expected image output to be 'test-platform-image', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+  test-platforms:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: build-platforms
+        uses: .
+        with:
+          image: test-platforms-image
+          tags: latest
+          containerfiles: |
+            actions/hardened/redhat-actions--buildah-build/v2.13/tests/fixtures/Containerfile
+          platforms: linux/amd64,linux/arm64
+
+      - name: Assert image output
+        env:
+          ACTUAL: ${{ steps.build-platforms.outputs.image }}
+        run: |
+          echo "actual image: $ACTUAL"
+          if [ "$ACTUAL" != "test-platforms-image" ]; then
+            echo "FAIL: expected image output to be 'test-platforms-image', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
