@@ -1,0 +1,63 @@
+name: Test envs input (environment variables)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      RUNNER_OS: Linux
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create mock buildah binary
+        run: |
+          mkdir -p /usr/local/bin
+          cat > /usr/local/bin/buildah << 'BUILDAH_MOCK'
+          #!/bin/bash
+          # Mock buildah that succeeds for all commands
+          echo "buildah mock: $@" >&2
+          if [ "$1" = "version" ]; then
+            echo "buildah version 1.29.0 (image-spec 1.0.2-dev, runtime-spec 1.0.2-dev)"
+          elif [ "$1" = "from" ]; then
+            echo "alpine-working-container"
+          fi
+          exit 0
+          BUILDAH_MOCK
+          chmod +x /usr/local/bin/buildah
+
+      - name: Create mock storage config
+        run: |
+          mkdir -p /etc/containers
+          printf '[storage]\ndriver = "vfs"\n' > /etc/containers/storage.conf
+
+      - id: build
+        uses: .
+        with:
+          image: envs-test-image
+          tags: latest
+          base-image: alpine:3.18
+          envs: |
+            MY_VAR=hello
+            ANOTHER_VAR=world
+
+      - name: Assert image output
+        env:
+          ACTUAL: ${{ steps.build.outputs.image }}
+        run: |
+          echo "actual image: $ACTUAL"
+          if [ "$ACTUAL" != "envs-test-image" ]; then
+            echo "FAIL: expected image output to be 'envs-test-image', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
+
+      - name: Assert tags output
+        env:
+          ACTUAL: ${{ steps.build.outputs.tags }}
+        run: |
+          echo "actual tags: $ACTUAL"
+          if [ "$ACTUAL" != "latest" ]; then
+            echo "FAIL: expected tags output to be 'latest', got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS"
