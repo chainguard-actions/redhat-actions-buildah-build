@@ -8,6 +8,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
+| v2 | [`v2`](https://github.com/chainguard-actions/redhat-actions-buildah-build/tree/v2) | [`7a95fa7`](https://github.com/redhat-actions/buildah-build/commit/7a95fa7ee0f02d552a32753e7414641a04307056) |
 | v2.13 | [`v2.13`](https://github.com/chainguard-actions/redhat-actions-buildah-build/tree/v2.13) | — |
 
 ## Privacy
