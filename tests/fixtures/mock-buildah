@@ -1,0 +1,68 @@
+#!/bin/sh
+# Mock buildah for testing the buildah-build action.
+# Simulates buildah commands without requiring a real container runtime.
+# This avoids issues with running buildah inside Docker (act environment).
+
+CMD="$1"
+shift
+
+case "$CMD" in
+  version)
+    echo "buildah version 1.35.0 (image-spec 1.0.2, runtime-spec 1.0.2-dev)"
+    exit 0
+    ;;
+  bud|build)
+    # Parse -t flag to get image name (for informational output)
+    IMAGE=""
+    PREV=""
+    for arg in "$@"; do
+      case "$PREV" in
+        -t|--tag) IMAGE="$arg" ;;
+      esac
+      PREV="$arg"
+    done
+    echo "STEP 1/1: FROM busybox:latest"
+    echo "Getting image source signatures"
+    echo "Copying blob sha256:mock"
+    echo "Writing manifest to image destination"
+    if [ -n "$IMAGE" ]; then
+      echo "Successfully tagged $IMAGE"
+    fi
+    echo "mock-image-id-abc123def456"
+    exit 0
+    ;;
+  from)
+    # Return a container working name
+    echo "busybox-working-container"
+    exit 0
+    ;;
+  copy)
+    exit 0
+    ;;
+  config)
+    exit 0
+    ;;
+  commit)
+    echo "mock-image-id-abc123def456"
+    exit 0
+    ;;
+  tag)
+    exit 0
+    ;;
+  images)
+    # Return a fake digest for any image
+    echo "sha256:abc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab"
+    exit 0
+    ;;
+  manifest)
+    exit 0
+    ;;
+  inspect)
+    echo "sha256:abc123def456789abcdef0123456789abcdef0123456789abcdef0123456789ab"
+    exit 0
+    ;;
+  *)
+    echo "mock-buildah: unknown command '$CMD'" >&2
+    exit 1
+    ;;
+esac

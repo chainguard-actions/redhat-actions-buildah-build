@@ -1,0 +1,78 @@
+name: Test Envs, Port, and Layers Inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up mock buildah on PATH
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/mock-buildah" "$HOME/.local/bin/buildah"
+          chmod +x "$HOME/.local/bin/buildah"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Verify mock buildah
+        run: |
+          which buildah
+          buildah version
+
+      - name: Create a Containerfile for envs/port/layers test
+        run: |
+          cat > "$GITHUB_WORKSPACE/Containerfile.envs" << 'EOF'
+          FROM busybox:latest
+          LABEL test=envs-port-layers
+          CMD ["echo", "envs port layers test"]
+          EOF
+
+      - id: build
+        name: Build image with envs, port, and layers inputs
+        uses: .
+        with:
+          image: envs-port-layers-image
+          tags: latest
+          containerfiles: ./Containerfile.envs
+          envs: |
+            APP_ENV=production
+            LOG_LEVEL=info
+          port: |
+            8080
+            8443
+          layers: 'true'
+          oci: 'false'
+          tls-verify: 'false'
+
+      - name: Assert image output
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          echo "image: $IMAGE"
+          if [ "$IMAGE" != "envs-port-layers-image" ]; then
+            echo "FAIL: expected image='envs-port-layers-image', got '$IMAGE'"
+            exit 1
+          fi
+          echo "PASS: image output correct"
+
+      - name: Assert image-with-tag output
+        env:
+          IMAGE_WITH_TAG: ${{ steps.build.outputs.image-with-tag }}
+        run: |
+          echo "image-with-tag: $IMAGE_WITH_TAG"
+          if [ "$IMAGE_WITH_TAG" != "envs-port-layers-image:latest" ]; then
+            echo "FAIL: expected image-with-tag='envs-port-layers-image:latest', got '$IMAGE_WITH_TAG'"
+            exit 1
+          fi
+          echo "PASS: image-with-tag output correct"
+
+      - name: Assert digest output
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "digest: $DIGEST"
+          if [ -z "$DIGEST" ]; then
+            echo "FAIL: expected non-empty digest output"
+            exit 1
+          fi
+          echo "PASS: digest output non-empty"

@@ -1,0 +1,58 @@
+name: Test Full Image Name Tags
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up mock buildah on PATH
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/mock-buildah" "$HOME/.local/bin/buildah"
+          chmod +x "$HOME/.local/bin/buildah"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Verify mock buildah
+        run: |
+          which buildah
+          buildah version
+
+      - name: Create a simple Containerfile
+        run: |
+          cat > "$GITHUB_WORKSPACE/Containerfile.fullname" << 'EOF'
+          FROM busybox:latest
+          CMD ["echo", "full image name tag test"]
+          EOF
+
+      - id: build
+        name: Build image using full image name tags
+        uses: .
+        with:
+          tags: localhost/myrepo/full-name-image:v2.0.0 localhost/myrepo/full-name-image:stable
+          containerfiles: ./Containerfile.fullname
+          oci: 'false'
+          tls-verify: 'false'
+
+      - name: Assert image-with-tag output
+        env:
+          IMAGE_WITH_TAG: ${{ steps.build.outputs.image-with-tag }}
+        run: |
+          echo "image-with-tag: $IMAGE_WITH_TAG"
+          if [ -z "$IMAGE_WITH_TAG" ]; then
+            echo "FAIL: expected non-empty image-with-tag output"
+            exit 1
+          fi
+          echo "PASS: image-with-tag output non-empty: $IMAGE_WITH_TAG"
+
+      - name: Assert digest output
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "digest: $DIGEST"
+          if [ -z "$DIGEST" ]; then
+            echo "FAIL: expected non-empty digest output"
+            exit 1
+          fi
+          echo "PASS: digest output non-empty"

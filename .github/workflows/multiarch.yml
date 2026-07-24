@@ -1,0 +1,242 @@
+name: Multiarch build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # every day at midnight
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PROJECT_DIR: spring-petclinic
+  MVN_REPO_DIR: ~/.m2/repository
+  IMAGE_TAG: latest
+
+jobs:
+  build-multiarch-containerfile:
+    name: Build multi-architecture image using Containerfile
+    env:
+      IMAGE_NAME: hello-world-multiarch
+    runs-on: ubuntu-24.04
+
+    steps:
+
+      # Checkout buildah action github repository
+      - name: Checkout Buildah action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: "buildah-build"
+
+      - name: Install qemu dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
+
+      - name: Create Containerfile
+        run: |
+          cat > Containerfile<<EOF
+
+          FROM docker.io/alpine:3.14
+
+          RUN echo "hello world"
+
+          ENTRYPOINT [ "sh", "-c", "echo -n 'Machine: ' && uname -m && echo -n 'Bits: ' && getconf LONG_BIT && echo 'goodbye world'" ]
+          EOF
+
+      - name: Build Image
+        id: build_image_multiarch
+        uses: ./buildah-build/
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: latest v1
+          archs: amd64                    # Single arch testcase
+          containerfiles: |
+            ./Containerfile
+
+      - name: Echo Outputs
+        env:
+          BUILD_IMAGE: ${{ steps.build_image_multiarch.outputs.image }}
+          BUILD_TAGS: ${{ steps.build_image_multiarch.outputs.tags }}
+          BUILD_IMAGE_WITH_TAG: ${{ steps.build_image_multiarch.outputs.image-with-tag }}
+        run: |
+          echo "Image: $BUILD_IMAGE"
+          echo "Tags: $BUILD_TAGS"
+          echo "Tagged Image: $BUILD_IMAGE_WITH_TAG"
+
+      - name: Check images created
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: buildah images | grep "$IMAGE_NAME"
+
+      - name: Check image metadata
+        env:
+          BUILD_IMAGE: ${{ steps.build_image_multiarch.outputs.image }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          set -x
+          buildah inspect "$BUILD_IMAGE:$IMAGE_TAG" | jq ".OCIv1.architecture"
+          buildah inspect "$BUILD_IMAGE:$IMAGE_TAG" | jq ".Docker.architecture"
+
+      - name: Run image
+        env:
+          BUILD_IMAGE: ${{ steps.build_image_multiarch.outputs.image }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          podman run --rm "$BUILD_IMAGE:$IMAGE_TAG"
+
+  build-multiplatform-containerfile:
+    name: Build multi-platform image using Containerfile
+    env:
+      IMAGE_NAME: hello-world-multiplatform
+    runs-on: ubuntu-24.04
+
+    steps:
+
+      # Checkout buildah action github repository
+      - name: Checkout Buildah action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: "buildah-build"
+
+      - name: Install qemu dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
+
+      - name: Create Containerfile
+        run: |
+          cat > Containerfile<<EOF
+
+          FROM docker.io/alpine:3.16
+
+          RUN echo "hello world"
+
+          ENTRYPOINT [ "sh", "-c", "echo -n 'Machine: ' && uname -m && echo -n 'Bits: ' && getconf LONG_BIT && echo 'goodbye world'" ]
+          EOF
+
+      - name: Build Image
+        id: build_image_multiplatform
+        uses: ./buildah-build/
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: ${{ env.IMAGE_TAG }}
+          platforms: linux/amd64, linux/ppc64le
+          containerfiles: |
+            ./Containerfile
+
+      - name: Echo Outputs
+        env:
+          BUILD_IMAGE: ${{ steps.build_image_multiplatform.outputs.image }}
+          BUILD_TAGS: ${{ steps.build_image_multiplatform.outputs.tags }}
+          BUILD_IMAGE_WITH_TAG: ${{ steps.build_image_multiplatform.outputs.image-with-tag }}
+        run: |
+          echo "Image: $BUILD_IMAGE"
+          echo "Tags: $BUILD_TAGS"
+          echo "Tagged Image: $BUILD_IMAGE_WITH_TAG"
+
+      - name: Check images created
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: buildah images | grep "$IMAGE_NAME"
+
+      - name: Check manifest
+        env:
+          BUILD_IMAGE: ${{ steps.build_image_multiplatform.outputs.image }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          set -x
+          buildah manifest inspect "$BUILD_IMAGE:$IMAGE_TAG"
+
+      - name: Run image
+        env:
+          BUILD_IMAGE: ${{ steps.build_image_multiplatform.outputs.image }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          podman run --rm "$BUILD_IMAGE:$IMAGE_TAG"
+
+  build-multiarch-scratch:
+    name: Build multi-architecture image from scratch
+    env:
+      IMAGE_NAME: spring-petclinic-multiarch
+    runs-on: ubuntu-24.04
+
+    steps:
+
+      # Checkout buildah action github repository
+      - name: Checkout Buildah action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: "buildah-build"
+
+      - name: Install qemu dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
+
+      # Checkout spring-petclinic github repository
+      - name: Checkout spring-petclinic project
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: "spring-projects/spring-petclinic"
+          path: ${{ env.PROJECT_DIR }}
+
+      # Setup java.
+      - name: Setup Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'maven'
+
+      # Run maven to build the project
+      - name: Maven
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          mvn package -ntp -B
+
+      - name: Build Image
+        id: build_image_multiarch
+        uses: ./buildah-build/
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: ${{ env.IMAGE_TAG }}
+          base-image: 'registry.access.redhat.com/openjdk/openjdk-11-rhel7'
+          archs: amd64, i386, ppc64le
+          # To avoid hardcoding a particular version of the binary.
+          content: |
+            ./spring-petclinic/target/spring-petclinic-*.jar
+          entrypoint: |
+            java
+            -jar
+            spring-petclinic-*.jar
+          port: 8080
+          workdir: "."
+
+      - name: Echo Outputs
+        env:
+          BUILD_IMAGE: ${{ steps.build_image_multiarch.outputs.image }}
+          BUILD_TAGS: ${{ steps.build_image_multiarch.outputs.tags }}
+          BUILD_IMAGE_WITH_TAG: ${{ steps.build_image_multiarch.outputs.image-with-tag }}
+        run: |
+          echo "Image: $BUILD_IMAGE"
+          echo "Tags: $BUILD_TAGS"
+          echo "Tagged Image: $BUILD_IMAGE_WITH_TAG"
+
+      - name: Check images created
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: buildah images | grep "$IMAGE_NAME"
+
+      - name: Check manifest
+        env:
+          BUILD_IMAGE: ${{ steps.build_image_multiarch.outputs.image }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          set -x
+          buildah manifest inspect "$BUILD_IMAGE:$IMAGE_TAG"

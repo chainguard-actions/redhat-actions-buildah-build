@@ -1,0 +1,40 @@
+{
+  "name": "buildah-build",
+  "version": "3.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "description": "Action for building OCI-compatible images using buildah",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/redhat-actions/buildah-build"
+  },
+  "main": "dist/index.js",
+  "scripts": {
+    "compile": "tsc -p .",
+    "bundle": "esbuild src/index.ts --bundle --platform=node --target=node20 --outfile=dist/index.js --sourcemap --minify",
+    "clean": "rm -rf out/ dist/",
+    "lint": "eslint . --max-warnings=0",
+    "generate-ios": "npx action-io-generator -w -o ./src/generated/inputs-outputs.ts"
+  },
+  "keywords": [],
+  "author": "Red Hat",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^3.0.1",
+    "@actions/exec": "^3.0.0",
+    "@actions/io": "^3.0.2",
+    "ini": "^7.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@redhat-actions/action-io-generator": "^1.5.0",
+    "@types/ini": "^4.1.1",
+    "@types/node": "^26.1.1",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.7.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.65.0"
+  }
+}
