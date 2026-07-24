@@ -1,0 +1,50 @@
+name: Test build with full image name tags
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Build image using full image name in tags
+        id: build
+        uses: .
+        with:
+          tags: localhost/myrepo/full-name-image:v2.0.0
+          containerfiles: tests/fixtures/Containerfile
+          extra-args: |
+            --pull
+
+      - name: Assert image-with-tag output
+        env:
+          IMAGE_WITH_TAG: ${{ steps.build.outputs.image-with-tag }}
+        run: |
+          echo "image-with-tag: $IMAGE_WITH_TAG"
+          if [ "$IMAGE_WITH_TAG" != "localhost/myrepo/full-name-image:v2.0.0" ]; then
+            echo "FAIL: expected image-with-tag='localhost/myrepo/full-name-image:v2.0.0', got '$IMAGE_WITH_TAG'"
+            exit 1
+          fi
+          echo "PASS: image-with-tag output is correct"
+
+      - name: Assert digest output
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "digest: $DIGEST"
+          if [ -z "$DIGEST" ]; then
+            echo "FAIL: expected digest to be non-empty"
+            exit 1
+          fi
+          echo "PASS: digest output is non-empty"
+
+      - name: Assert image exists in local storage
+        run: |
+          echo "Checking image exists in local storage..."
+          if buildah images | grep -q "full-name-image"; then
+            echo "PASS: image found in local storage"
+          else
+            echo "FAIL: image not found in local storage"
+            buildah images
+            exit 1
+          fi

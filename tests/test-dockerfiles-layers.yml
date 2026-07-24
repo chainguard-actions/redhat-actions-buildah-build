@@ -1,0 +1,74 @@
+name: Test dockerfiles alias and layers inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Build image using dockerfiles alias and layers caching
+        id: build
+        uses: .
+        with:
+          image: dockerfiles-layers-image
+          tags: latest
+          dockerfiles: tests/fixtures/Containerfile
+          layers: 'true'
+          extra-args: |
+            --pull
+
+      - name: Assert image output
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          echo "image: $IMAGE"
+          if [ "$IMAGE" != "dockerfiles-layers-image" ]; then
+            echo "FAIL: expected image='dockerfiles-layers-image', got '$IMAGE'"
+            exit 1
+          fi
+          echo "PASS: image output is correct"
+
+      - name: Assert tags output
+        env:
+          TAGS: ${{ steps.build.outputs.tags }}
+        run: |
+          echo "tags: $TAGS"
+          if [ -z "$TAGS" ]; then
+            echo "FAIL: expected tags to be non-empty"
+            exit 1
+          fi
+          echo "PASS: tags output is non-empty"
+
+      - name: Assert image-with-tag output
+        env:
+          IMAGE_WITH_TAG: ${{ steps.build.outputs.image-with-tag }}
+        run: |
+          echo "image-with-tag: $IMAGE_WITH_TAG"
+          if [ "$IMAGE_WITH_TAG" != "dockerfiles-layers-image:latest" ]; then
+            echo "FAIL: expected image-with-tag='dockerfiles-layers-image:latest', got '$IMAGE_WITH_TAG'"
+            exit 1
+          fi
+          echo "PASS: image-with-tag output is correct"
+
+      - name: Assert digest output
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "digest: $DIGEST"
+          if [ -z "$DIGEST" ]; then
+            echo "FAIL: expected digest to be non-empty"
+            exit 1
+          fi
+          echo "PASS: digest output is non-empty"
+
+      - name: Assert image exists in local storage
+        run: |
+          echo "Checking image exists in local storage..."
+          if buildah images | grep -q "dockerfiles-layers-image"; then
+            echo "PASS: image found in local storage"
+          else
+            echo "FAIL: image not found in local storage"
+            buildah images
+            exit 1
+          fi

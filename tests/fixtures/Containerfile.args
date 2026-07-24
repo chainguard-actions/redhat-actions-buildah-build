@@ -1,0 +1,8 @@
+FROM busybox:latest
+ARG MY_VERSION=unknown
+ARG MY_ENV=dev
+LABEL version=$MY_VERSION
+LABEL environment=$MY_ENV
+LABEL org.opencontainers.image.title="Test Image"
+RUN echo "Version: $MY_VERSION, Env: $MY_ENV"
+CMD ["echo", "done"]

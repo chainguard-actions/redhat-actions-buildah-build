@@ -1,0 +1,84 @@
+name: Test content, port, and envs inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create content file to copy into image
+        run: |
+          mkdir -p /tmp/test-content
+          echo "hello from content" > /tmp/test-content/hello.txt
+
+      - name: Build image with content, port, and envs
+        id: build
+        uses: .
+        with:
+          image: content-port-envs-image
+          tags: latest
+          base-image: busybox:latest
+          content: /tmp/test-content
+          port: |
+            8080
+            9090
+          envs: |
+            MY_VAR=hello
+            ANOTHER_VAR=world
+          squash: 'true'
+
+      - name: Assert image output
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          echo "image: $IMAGE"
+          if [ "$IMAGE" != "content-port-envs-image" ]; then
+            echo "FAIL: expected image='content-port-envs-image', got '$IMAGE'"
+            exit 1
+          fi
+          echo "PASS: image output is correct"
+
+      - name: Assert tags output
+        env:
+          TAGS: ${{ steps.build.outputs.tags }}
+        run: |
+          echo "tags: $TAGS"
+          if [ -z "$TAGS" ]; then
+            echo "FAIL: expected tags to be non-empty"
+            exit 1
+          fi
+          echo "PASS: tags output is non-empty"
+
+      - name: Assert image-with-tag output
+        env:
+          IMAGE_WITH_TAG: ${{ steps.build.outputs.image-with-tag }}
+        run: |
+          echo "image-with-tag: $IMAGE_WITH_TAG"
+          if [ "$IMAGE_WITH_TAG" != "content-port-envs-image:latest" ]; then
+            echo "FAIL: expected image-with-tag='content-port-envs-image:latest', got '$IMAGE_WITH_TAG'"
+            exit 1
+          fi
+          echo "PASS: image-with-tag output is correct"
+
+      - name: Assert digest output
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "digest: $DIGEST"
+          if [ -z "$DIGEST" ]; then
+            echo "FAIL: expected digest to be non-empty"
+            exit 1
+          fi
+          echo "PASS: digest output is non-empty"
+
+      - name: Assert image exists in local storage
+        run: |
+          echo "Checking image exists in local storage..."
+          if buildah images | grep -q "content-port-envs-image"; then
+            echo "PASS: image found in local storage"
+          else
+            echo "FAIL: image not found in local storage"
+            buildah images
+            exit 1
+          fi

@@ -1,0 +1,80 @@
+name: Test build with build-args and labels
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Build image with build-args and labels
+        id: build
+        uses: .
+        with:
+          image: args-image
+          tags: test
+          containerfiles: tests/fixtures/Containerfile.args
+          build-args: |
+            MY_VERSION=1.2.3
+            MY_ENV=production
+          labels: |
+            org.opencontainers.image.title=Test Image
+            org.opencontainers.image.version=1.2.3
+          extra-args: |
+            --pull
+
+      - name: Assert image output
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          echo "image: $IMAGE"
+          if [ "$IMAGE" != "args-image" ]; then
+            echo "FAIL: expected image='args-image', got '$IMAGE'"
+            exit 1
+          fi
+          echo "PASS: image output is correct"
+
+      - name: Assert image-with-tag output
+        env:
+          IMAGE_WITH_TAG: ${{ steps.build.outputs.image-with-tag }}
+        run: |
+          echo "image-with-tag: $IMAGE_WITH_TAG"
+          if [ "$IMAGE_WITH_TAG" != "args-image:test" ]; then
+            echo "FAIL: expected image-with-tag='args-image:test', got '$IMAGE_WITH_TAG'"
+            exit 1
+          fi
+          echo "PASS: image-with-tag output is correct"
+
+      - name: Assert digest output
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "digest: $DIGEST"
+          if [ -z "$DIGEST" ]; then
+            echo "FAIL: expected digest to be non-empty"
+            exit 1
+          fi
+          echo "PASS: digest output is non-empty"
+
+      - name: Assert image exists in local storage
+        run: |
+          echo "Checking image exists in local storage..."
+          if buildah images | grep -q "args-image"; then
+            echo "PASS: image found in local storage"
+          else
+            echo "FAIL: image not found in local storage"
+            buildah images
+            exit 1
+          fi
+
+      - name: Assert label was applied
+        run: |
+          echo "Inspecting image labels..."
+          INSPECT_OUT=$(buildah inspect --type image args-image:test 2>&1)
+          echo "Inspect output (first 500 chars): ${INSPECT_OUT:0:500}"
+          if echo "$INSPECT_OUT" | grep -qi "Test Image"; then
+            echo "PASS: label 'org.opencontainers.image.title' found in inspect output"
+          else
+            echo "FAIL: expected label not found in image inspect output"
+            exit 1
+          fi
