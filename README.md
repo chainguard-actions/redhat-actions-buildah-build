@@ -11,6 +11,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | v2 | [`v2`](https://github.com/chainguard-actions/redhat-actions-buildah-build/tree/v2) | [`7a95fa7`](https://github.com/redhat-actions/buildah-build/commit/7a95fa7ee0f02d552a32753e7414641a04307056) |
 | v2.13 | [`v2.13`](https://github.com/chainguard-actions/redhat-actions-buildah-build/tree/v2.13) | — |
 | v3.0.0 | [`v3.0.0`](https://github.com/chainguard-actions/redhat-actions-buildah-build/tree/v3.0.0) | [`5d84797`](https://github.com/redhat-actions/buildah-build/commit/5d8479758cc72ed82df28daba521d27e20ff8c8a) |
+| v3.0.1 | [`v3.0.1`](https://github.com/chainguard-actions/redhat-actions-buildah-build/tree/v3.0.1) | [`27e5954`](https://github.com/redhat-actions/buildah-build/commit/27e5954dfd56a621f706827f2de689dc955e8711) |
 
 ## Privacy
 
