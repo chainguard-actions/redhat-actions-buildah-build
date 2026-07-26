@@ -1,0 +1,61 @@
+name: Test OCI image format build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create a simple Containerfile
+        run: |
+          cat > "$GITHUB_WORKSPACE/Containerfile.oci" << 'EOF'
+          FROM busybox:latest
+          CMD ["echo", "oci format test"]
+          EOF
+
+      - id: build
+        uses: .
+        with:
+          image: oci-image
+          tags: latest
+          containerfiles: Containerfile.oci
+          oci: 'true'
+          annotations: |
+            org.opencontainers.image.version=1.0.0
+            org.opencontainers.image.description=Test OCI image
+          extra-args: |
+            --pull
+
+      - name: Assert image output
+        env:
+          ACTUAL_IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          echo "actual image: $ACTUAL_IMAGE"
+          if [ "$ACTUAL_IMAGE" != "oci-image" ]; then
+            echo "FAIL: expected image to be 'oci-image', got '$ACTUAL_IMAGE'"
+            exit 1
+          fi
+          echo "PASS: image output is correct"
+
+      - name: Assert image-with-tag output
+        env:
+          ACTUAL_IMAGE_WITH_TAG: ${{ steps.build.outputs.image-with-tag }}
+        run: |
+          echo "actual image-with-tag: $ACTUAL_IMAGE_WITH_TAG"
+          if [ "$ACTUAL_IMAGE_WITH_TAG" != "oci-image:latest" ]; then
+            echo "FAIL: expected image-with-tag to be 'oci-image:latest', got '$ACTUAL_IMAGE_WITH_TAG'"
+            exit 1
+          fi
+          echo "PASS: image-with-tag output is correct"
+
+      - name: Assert digest output
+        env:
+          ACTUAL_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "actual digest: $ACTUAL_DIGEST"
+          if [ -z "$ACTUAL_DIGEST" ]; then
+            echo "FAIL: expected digest to be non-empty"
+            exit 1
+          fi
+          echo "PASS: digest output is non-empty"

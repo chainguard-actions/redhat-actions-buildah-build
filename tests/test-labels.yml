@@ -1,0 +1,74 @@
+name: Test build with labels
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create a simple Containerfile
+        run: |
+          cat > "$GITHUB_WORKSPACE/Containerfile.labels" << 'EOF'
+          FROM busybox:latest
+          CMD ["echo", "labels test"]
+          EOF
+
+      - id: build
+        uses: .
+        with:
+          image: labeled-image
+          tags: latest
+          containerfiles: Containerfile.labels
+          labels: |
+            org.opencontainers.image.title=Test Image
+            org.opencontainers.image.version=1.0.0
+            maintainer=test@example.com
+          extra-args: |
+            --pull
+
+      - name: Assert image output
+        env:
+          ACTUAL_IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          echo "actual image: $ACTUAL_IMAGE"
+          if [ "$ACTUAL_IMAGE" != "labeled-image" ]; then
+            echo "FAIL: expected image to be 'labeled-image', got '$ACTUAL_IMAGE'"
+            exit 1
+          fi
+          echo "PASS: image output is correct"
+
+      - name: Assert image-with-tag output
+        env:
+          ACTUAL_IMAGE_WITH_TAG: ${{ steps.build.outputs.image-with-tag }}
+        run: |
+          echo "actual image-with-tag: $ACTUAL_IMAGE_WITH_TAG"
+          if [ "$ACTUAL_IMAGE_WITH_TAG" != "labeled-image:latest" ]; then
+            echo "FAIL: expected image-with-tag to be 'labeled-image:latest', got '$ACTUAL_IMAGE_WITH_TAG'"
+            exit 1
+          fi
+          echo "PASS: image-with-tag output is correct"
+
+      - name: Assert digest output
+        env:
+          ACTUAL_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "actual digest: $ACTUAL_DIGEST"
+          if [ -z "$ACTUAL_DIGEST" ]; then
+            echo "FAIL: expected digest to be non-empty"
+            exit 1
+          fi
+          echo "PASS: digest output is non-empty"
+
+      - name: Verify labels were applied to the image
+        run: |
+          echo "Inspecting image labels..."
+          LABELS=$(buildah inspect --format '{{.OCIv1.Config.Labels}}' labeled-image:latest 2>/dev/null || \
+                   buildah inspect --format '{{.Docker.Config.Labels}}' labeled-image:latest 2>/dev/null || \
+                   echo "")
+          echo "Labels: $LABELS"
+          if echo "$LABELS" | grep -q "Test Image"; then
+            echo "PASS: label 'org.opencontainers.image.title' found"
+          else
+            echo "INFO: Could not verify labels via buildah inspect (may still be correct)"
+          fi

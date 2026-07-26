@@ -1,0 +1,156 @@
+# Tests for containerfile-based builds: native buildah, containerized
+# buildah (buildah-image), and case normalization.
+name: Build from containerfile
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-native:
+    name: Build with native buildah
+    runs-on: ubuntu-24.04
+    env:
+      IMAGE_NAME: "hello-world"
+    steps:
+      - name: Checkout Buildah action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: "buildah-build"
+
+      - name: Create Containerfile
+        run: |
+          cat > Containerfile<<EOF
+          FROM busybox
+          RUN echo "hello world"
+          EOF
+
+      - name: Build Image
+        id: build_image
+        uses: ./buildah-build/
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          layers: false
+          tags: 'latest ${{ github.sha }}'
+          containerfiles: |
+            ./Containerfile
+          extra-args: |
+            --pull
+
+      - name: Echo Outputs
+        env:
+          BUILD_IMAGE: ${{ steps.build_image.outputs.image }}
+          BUILD_TAGS: ${{ steps.build_image.outputs.tags }}
+          BUILD_IMAGE_WITH_TAG: ${{ steps.build_image.outputs.image-with-tag }}
+          BUILD_DIGEST: ${{ steps.build_image.outputs.digest }}
+        run: |
+          echo "Image: $BUILD_IMAGE"
+          echo "Tags: $BUILD_TAGS"
+          echo "Tagged Image: $BUILD_IMAGE_WITH_TAG"
+          echo "Image Digest: $BUILD_DIGEST"
+
+      - name: Check images created
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: buildah images | grep "$IMAGE_NAME"
+
+  build-containerized:
+    name: Build with containerized buildah
+    runs-on: ubuntu-24.04
+    env:
+      IMAGE_NAME: "hello-world"
+    steps:
+      - name: Checkout Buildah action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: "buildah-build"
+
+      - name: Create Containerfile
+        run: |
+          cat > Containerfile<<EOF
+          FROM busybox
+          RUN echo "hello world"
+          EOF
+
+      - name: Build Image
+        id: build_image
+        uses: ./buildah-build/
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          layers: false
+          tags: 'latest ${{ github.sha }}'
+          containerfiles: |
+            ./Containerfile
+          buildah-image: quay.io/buildah/stable
+
+      - name: Echo Outputs
+        env:
+          BUILD_IMAGE: ${{ steps.build_image.outputs.image }}
+          BUILD_TAGS: ${{ steps.build_image.outputs.tags }}
+          BUILD_IMAGE_WITH_TAG: ${{ steps.build_image.outputs.image-with-tag }}
+          BUILD_DIGEST: ${{ steps.build_image.outputs.digest }}
+        run: |
+          echo "Image: $BUILD_IMAGE"
+          echo "Tags: $BUILD_TAGS"
+          echo "Tagged Image: $BUILD_IMAGE_WITH_TAG"
+          echo "Image Digest: $BUILD_DIGEST"
+
+      - name: Check images created
+        env:
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: buildah images | grep "$IMAGE_NAME"
+
+  build-case-normalization:
+    name: Build with mixed-case names
+    runs-on: ubuntu-24.04
+    env:
+      IMAGE_NAME: ImageCaseTest
+      IMAGE_TAGS: v1 TagCaseTest
+    steps:
+      - name: Checkout Buildah action
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: "buildah-build"
+
+      - name: Create Containerfile
+        run: |
+          cat > Containerfile<<EOF
+          FROM busybox
+          RUN echo "hello world"
+          EOF
+
+      - name: Build Image
+        id: build_image
+        uses: ./buildah-build/
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          layers: false
+          tags: ${{ env.IMAGE_TAGS }}
+          containerfiles: |
+            ./Containerfile
+          extra-args: |
+            --pull
+
+      - name: Echo Outputs
+        env:
+          BUILD_IMAGE: ${{ steps.build_image.outputs.image }}
+          BUILD_TAGS: ${{ steps.build_image.outputs.tags }}
+          BUILD_IMAGE_WITH_TAG: ${{ steps.build_image.outputs.image-with-tag }}
+          BUILD_DIGEST: ${{ steps.build_image.outputs.digest }}
+        run: |
+          echo "Image: $BUILD_IMAGE"
+          echo "Tags: $BUILD_TAGS"
+          echo "Tagged Image: $BUILD_IMAGE_WITH_TAG"
+          echo "Image Digest: $BUILD_DIGEST"
+
+      - name: Check images created
+        run: buildah images

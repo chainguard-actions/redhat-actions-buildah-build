@@ -1,0 +1,69 @@
+name: Test dockerfiles input (alias for containerfiles)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create a Dockerfile
+        run: |
+          cat > "$GITHUB_WORKSPACE/Dockerfile.test" << 'EOF'
+          FROM busybox:latest
+          LABEL test=dockerfiles-alias
+          CMD ["echo", "dockerfiles alias test"]
+          EOF
+
+      - id: build
+        uses: .
+        with:
+          image: dockerfiles-test-image
+          tags: latest
+          dockerfiles: Dockerfile.test
+          extra-args: |
+            --pull
+
+      - name: Assert image output
+        env:
+          ACTUAL_IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          echo "actual image: $ACTUAL_IMAGE"
+          if [ "$ACTUAL_IMAGE" != "dockerfiles-test-image" ]; then
+            echo "FAIL: expected image to be 'dockerfiles-test-image', got '$ACTUAL_IMAGE'"
+            exit 1
+          fi
+          echo "PASS: image output is correct"
+
+      - name: Assert tags output
+        env:
+          ACTUAL_TAGS: ${{ steps.build.outputs.tags }}
+        run: |
+          echo "actual tags: $ACTUAL_TAGS"
+          if [ -z "$ACTUAL_TAGS" ]; then
+            echo "FAIL: expected tags to be non-empty"
+            exit 1
+          fi
+          echo "PASS: tags output is non-empty"
+
+      - name: Assert image-with-tag output
+        env:
+          ACTUAL_IMAGE_WITH_TAG: ${{ steps.build.outputs.image-with-tag }}
+        run: |
+          echo "actual image-with-tag: $ACTUAL_IMAGE_WITH_TAG"
+          if [ "$ACTUAL_IMAGE_WITH_TAG" != "dockerfiles-test-image:latest" ]; then
+            echo "FAIL: expected image-with-tag to be 'dockerfiles-test-image:latest', got '$ACTUAL_IMAGE_WITH_TAG'"
+            exit 1
+          fi
+          echo "PASS: image-with-tag output is correct"
+
+      - name: Assert digest output
+        env:
+          ACTUAL_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "actual digest: $ACTUAL_DIGEST"
+          if [ -z "$ACTUAL_DIGEST" ]; then
+            echo "FAIL: expected digest to be non-empty"
+            exit 1
+          fi
+          echo "PASS: digest output is non-empty"

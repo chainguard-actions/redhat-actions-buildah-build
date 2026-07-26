@@ -1,0 +1,58 @@
+name: Test content input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create content files to copy into image
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/content-dir"
+          echo "hello from content" > "$GITHUB_WORKSPACE/content-dir/hello.txt"
+
+      - id: build
+        uses: .
+        with:
+          image: content-test-image
+          tags: latest
+          base-image: busybox:latest
+          content: |
+            content-dir
+          entrypoint: '["echo", "content test"]'
+          extra-args: |
+            --pull
+
+      - name: Assert image output
+        env:
+          ACTUAL_IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          echo "actual image: $ACTUAL_IMAGE"
+          if [ "$ACTUAL_IMAGE" != "content-test-image" ]; then
+            echo "FAIL: expected image to be 'content-test-image', got '$ACTUAL_IMAGE'"
+            exit 1
+          fi
+          echo "PASS: image output is correct"
+
+      - name: Assert tags output
+        env:
+          ACTUAL_TAGS: ${{ steps.build.outputs.tags }}
+        run: |
+          echo "actual tags: $ACTUAL_TAGS"
+          if [ -z "$ACTUAL_TAGS" ]; then
+            echo "FAIL: expected tags to be non-empty"
+            exit 1
+          fi
+          echo "PASS: tags output is non-empty"
+
+      - name: Assert digest output
+        env:
+          ACTUAL_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "actual digest: $ACTUAL_DIGEST"
+          if [ -z "$ACTUAL_DIGEST" ]; then
+            echo "FAIL: expected digest to be non-empty"
+            exit 1
+          fi
+          echo "PASS: digest output is non-empty"

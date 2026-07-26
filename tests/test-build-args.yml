@@ -1,0 +1,64 @@
+name: Test build with build-args
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create a Containerfile that uses build args
+        run: |
+          cat > "$GITHUB_WORKSPACE/Containerfile.buildargs" << 'EOF'
+          FROM busybox:latest
+          ARG APP_VERSION=unknown
+          ARG APP_ENV=production
+          LABEL version=$APP_VERSION
+          LABEL env=$APP_ENV
+          CMD ["echo", "build-args test"]
+          EOF
+
+      - id: build
+        uses: .
+        with:
+          image: buildargs-image
+          tags: latest
+          containerfiles: Containerfile.buildargs
+          build-args: |
+            APP_VERSION=1.2.3
+            APP_ENV=testing
+          extra-args: |
+            --pull
+
+      - name: Assert image output
+        env:
+          ACTUAL_IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          echo "actual image: $ACTUAL_IMAGE"
+          if [ "$ACTUAL_IMAGE" != "buildargs-image" ]; then
+            echo "FAIL: expected image to be 'buildargs-image', got '$ACTUAL_IMAGE'"
+            exit 1
+          fi
+          echo "PASS: image output is correct"
+
+      - name: Assert image-with-tag output
+        env:
+          ACTUAL_IMAGE_WITH_TAG: ${{ steps.build.outputs.image-with-tag }}
+        run: |
+          echo "actual image-with-tag: $ACTUAL_IMAGE_WITH_TAG"
+          if [ "$ACTUAL_IMAGE_WITH_TAG" != "buildargs-image:latest" ]; then
+            echo "FAIL: expected image-with-tag to be 'buildargs-image:latest', got '$ACTUAL_IMAGE_WITH_TAG'"
+            exit 1
+          fi
+          echo "PASS: image-with-tag output is correct"
+
+      - name: Assert digest output
+        env:
+          ACTUAL_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "actual digest: $ACTUAL_DIGEST"
+          if [ -z "$ACTUAL_DIGEST" ]; then
+            echo "FAIL: expected digest to be non-empty"
+            exit 1
+          fi
+          echo "PASS: digest output is non-empty"
