@@ -1,4 +1,4 @@
-name: Test arch, platform, layers, and extra-args inputs
+name: Test archs and platforms inputs
 on:
   workflow_dispatch:
 jobs:
@@ -17,26 +17,22 @@ jobs:
 
       - name: Create test Containerfile
         run: |
-          cat > "$GITHUB_WORKSPACE/Containerfile.arch" << 'EOF'
+          cat > "$GITHUB_WORKSPACE/Containerfile.archs" << 'EOF'
           FROM busybox:latest
-          ARG MYARG=default
-          LABEL test=arch-platform
-          RUN echo "arch platform test"
+          LABEL test=archs-platforms
+          RUN echo "archs platforms test"
           EOF
 
       - id: build
         uses: .
         continue-on-error: true
         with:
-          image: arch-platform-test
+          image: archs-platforms-test
           tags: latest
-          containerfiles: ./Containerfile.arch
+          containerfiles: ./Containerfile.archs
           context: .
-          arch: amd64
-          platform: linux/amd64
-          layers: 'true'
-          extra-args: |
-            --no-cache
+          archs: amd64
+          platforms: linux/amd64
 
       - name: Assert outputs or graceful failure
         env:
@@ -54,8 +50,8 @@ jobs:
               echo "FAIL: action succeeded but image output is empty"
               exit 1
             fi
-            if [ "$IMAGE" != "arch-platform-test" ]; then
-              echo "FAIL: expected image 'arch-platform-test', got '$IMAGE'"
+            if [ "$IMAGE" != "archs-platforms-test" ]; then
+              echo "FAIL: expected image 'archs-platforms-test', got '$IMAGE'"
               exit 1
             fi
             if [ -z "$TAGS" ]; then
@@ -66,11 +62,11 @@ jobs:
               echo "FAIL: expected 'latest' in tags"
               exit 1
             fi
-            if [ "$IMAGE_WITH_TAG" != "arch-platform-test:latest" ]; then
-              echo "FAIL: expected 'arch-platform-test:latest', got '$IMAGE_WITH_TAG'"
+            if [ "$IMAGE_WITH_TAG" != "archs-platforms-test:latest" ]; then
+              echo "FAIL: expected 'archs-platforms-test:latest', got '$IMAGE_WITH_TAG'"
               exit 1
             fi
-            echo "PASS: build succeeded with arch/platform/layers/extra-args inputs"
+            echo "PASS: build succeeded with archs/platforms inputs"
           elif [ "$OUTCOME" = "failure" ]; then
             echo "PASS: action failed gracefully (buildah not supported in this environment)"
           else
