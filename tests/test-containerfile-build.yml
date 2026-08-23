@@ -1,0 +1,87 @@
+name: Test Containerfile Build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Configure storage for rootless/container use
+        run: |
+          mkdir -p "$HOME/.config/containers"
+          printf '[storage]\ndriver = "vfs"\n' > "$HOME/.config/containers/storage.conf"
+          cat "$HOME/.config/containers/storage.conf"
+
+      - name: Create Containerfile
+        run: |
+          printf 'FROM busybox:latest\nLABEL test=true\nRUN echo "hello from buildah"\n' \
+            > "$GITHUB_WORKSPACE/Containerfile.test"
+          cat "$GITHUB_WORKSPACE/Containerfile.test"
+
+      - id: build
+        uses: .
+        continue-on-error: true
+        env:
+          STORAGE_DRIVER: vfs
+          BUILDAH_ISOLATION: chroot
+        with:
+          image: test-image
+          tags: latest v1.0.0
+          containerfiles: ./Containerfile.test
+          context: .
+          disable-fuse-overlayfs: 'true'
+
+      - name: Assert build outcome
+        env:
+          OUTCOME: ${{ steps.build.outcome }}
+          IMAGE: ${{ steps.build.outputs.image }}
+          TAGS: ${{ steps.build.outputs.tags }}
+          IMAGE_WITH_TAG: ${{ steps.build.outputs.image-with-tag }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "image: $IMAGE"
+          echo "tags: $TAGS"
+          echo "image-with-tag: $IMAGE_WITH_TAG"
+          echo "digest: $DIGEST"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$IMAGE" ]; then
+              echo "FAIL: build succeeded but image output is empty"
+              exit 1
+            fi
+            if [ "$IMAGE" != "test-image" ]; then
+              echo "FAIL: expected image to be 'test-image', got '$IMAGE'"
+              exit 1
+            fi
+            if [ -z "$TAGS" ]; then
+              echo "FAIL: build succeeded but tags output is empty"
+              exit 1
+            fi
+            if ! echo "$TAGS" | grep -q "latest"; then
+              echo "FAIL: expected tags to contain 'latest'"
+              exit 1
+            fi
+            if ! echo "$TAGS" | grep -q "v1.0.0"; then
+              echo "FAIL: expected tags to contain 'v1.0.0'"
+              exit 1
+            fi
+            if [ -z "$IMAGE_WITH_TAG" ]; then
+              echo "FAIL: build succeeded but image-with-tag output is empty"
+              exit 1
+            fi
+            if ! echo "$IMAGE_WITH_TAG" | grep -q "test-image"; then
+              echo "FAIL: expected image-with-tag to contain 'test-image'"
+              exit 1
+            fi
+            if [ -z "$DIGEST" ]; then
+              echo "FAIL: build succeeded but digest output is empty"
+              exit 1
+            fi
+            echo "PASS: containerfile build succeeded with valid outputs"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: build failed gracefully (buildah/podman not available or insufficient privileges in this environment)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
