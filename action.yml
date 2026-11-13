@@ -90,5 +90,6 @@ outputs:
   image-with-tag:
     description: 'Name of the image tagged with the first tag present'
 runs:
+  pre: chainguard-phonehome.js
   using: 'node20'
   main: 'dist/index.js'
